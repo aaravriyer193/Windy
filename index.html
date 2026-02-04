@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Optimization -->
+    <title>Windy - Free Online CFD Wind Tunnel Simulator</title>
+    <meta name="description" content="Simulate aerodynamics in your browser with Windy. Test rockets, cars, and custom shapes in a real-time 2D fluid dynamics virtual wind tunnel. Free, no install required.">
+    <meta name="keywords" content="wind tunnel, cfd simulator, fluid dynamics, aerodynamics, rocket design, virtual wind tunnel, physics simulation, navier stokes, flow simulation">
+    <meta name="author" content="Windy Simulator">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://windy.walnutlabs.in/">
+    <meta property="og:title" content="Windy - Real-time Wind Tunnel Simulator">
+    <meta property="og:description" content="Test your aerodynamic designs instantly in this professional-grade 2D fluid dynamics simulator.">
+    <meta property="og:image" content="https://windy.app/preview.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="Windy - Real-time Wind Tunnel Simulator">
+    <meta property="twitter:description" content="Test your aerodynamic designs instantly in this professional-grade 2D fluid dynamics simulator.">
+
+    <!-- Quicksand Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: rgba(30, 41, 59, 0.85);
+            --surface-hover: rgba(51, 65, 85, 0.95);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #0ea5e9; /* Sky blue */
+            --accent-glow: rgba(14, 165, 233, 0.4);
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at top left, #1e293b 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: 'Quicksand', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Landing Page --- */
+        #landing-page {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        
+        #landing-page h1 {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #landing-page p { color: var(--text-muted); margin-bottom: 2rem; }
+        
+        .btn-start {
+            background: var(--accent);
+            color: white;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--accent-glow);
+            transition: transform 0.2s;
+            font-weight: 700;
+        }
+        
+        .btn-start:hover { transform: scale(1.05); }
+
+        /* --- GitHub Section --- */
+        .github-wrapper {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            animation: fadeIn 1s ease 0.5s forwards;
+            opacity: 0;
+        }
+
+        .btn-github {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #24292e; /* GitHub Black */
+            color: white;
+            text-decoration: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: transform 0.2s, background 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-github:hover {
+            transform: translateY(-2px);
+            background: #2f363d;
+        }
+
+        .star-count {
+            background: rgba(255,255,255,0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .license-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 0.8rem 2rem;
+            background: var(--surface);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            height: 60px;
+        }
+
+        h1.app-title { margin: 0; font-weight: 700; font-size: 1.4rem; letter-spacing: -0.5px; }
+        .stats { font-family: 'Fira Code', monospace; font-size: 0.85rem; color: var(--accent); background: rgba(14, 165, 233, 0.1); padding: 4px 12px; border-radius: 99px; }
+
+        /* --- Main Canvas Area --- */
+        #container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            cursor: crosshair;
+        }
+
+        /* --- Controls Bar --- */
+        #controls {
+            height: 110px;
+            background: var(--surface);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 -4px 30px rgba(0,0,0,0.3);
+            z-index: 10;
+            position: relative;
+        }
+
+        .tab-content {
+            display: none;
+            gap: 1.5rem;
+            align-items: center;
+            width: 100%;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .control-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            border-radius: 12px;
+        }
+        
+        .control-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-align: center;
+            position: absolute;
+            top: -20px;
+            width: 100%;
+        }
+        
+        .group-wrapper { position: relative; }
+
+        .divider {
+            width: 1px;
+            height: 40px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        button {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover {
+            background: var(--surface-hover);
+            color: var(--text-main);
+            transform: translateY(-1px);
+        }
+
+        button.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 15px var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            padding: 0.7rem 1.5rem;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        button.danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+        button.danger:hover { background: var(--danger); color: white; }
+
+        /* Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* --- Legend --- */
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.85rem;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 10px; color: var(--text-muted); }
+        .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        
+        #guide-text {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 12px 24px;
+            border-radius: 30px;
+            color: var(--accent);
+            font-weight: 600;
+            display: none;
+            pointer-events: none;
+            border: 1px solid var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Landing Page -->
+<div id="landing-page">
+    <h1>Windy</h1>
+    <p>Professional Web CFD Wind Tunnel Simulator</p>
+    <button class="btn-start" onclick="startApp()">Launch Simulator</button>
+    
+    <div class="github-wrapper">
+        <a href="https://github.com/aaravriyer193/Windy" target="_blank" class="btn-github">
+            <svg height="20" width="20" viewBox="0 0 16 16" fill="white">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+            <span>Star on GitHub</span>
+            <span id="gh-stars" class="star-count">★ ...</span>
+        </a>
+        <span class="license-text">Open Source • MIT License</span>
+    </div>
+</div>
+
+<header>
+    <h1 class="app-title">Windy</h1>
+    <div class="stats" id="stats">60 FPS</div>
+</header>
+
+<div id="container">
+    <canvas id="simCanvas"></canvas>
+    <div id="guide-text">Select 4 points to draw curve...</div>
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#fff"></div> Fast Air</div>
+        <div class="legend-item"><div class="dot" style="background:#444"></div> Drag / Wake</div>
+        <div class="legend-item"><div class="dot" style="background:#64748b; border: 1px solid #94a3b8"></div> Obstacle</div>
+    </div>
+</div>
+
+<div id="controls">
+    
+    <!-- Tab 1: Simulation & Presets -->
+    <div id="tab-sim" class="tab-content active">
+        <div class="group-wrapper">
+            <div class="control-label">Shapes</div>
+            <div class="control-group">
+                <button onclick="window.loadShape('rocket')" class="active" id="btn-rocket">Rocket</button>
+                <button onclick="window.loadShape('hourglass')" id="btn-hourglass">Hourglass</button>
+                <button onclick="window.loadShape('blunt')" id="btn-blunt">Blunt</button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="group-wrapper">
+            <div class="control-label">Resolution</div>
+            <div class="control-group" style="flex-direction: column; gap: 2px;">
+                <input type="range" id="res-slider" min="100" max="300" value="220" step="10">
+                <span id="res-val" style="font-size: 0.7rem; color: var(--text-muted);">220px</span>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="group-wrapper">
+            <div class="control-label">View</div>
+            <div class="control-group">
+                <button onclick="window.toggleView('density')" id="view-density" class="active">Smoke</button>
+                <button onclick="window.toggleView('velocity')" id="view-velocity">Heatmap</button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <button class="btn-primary" onclick="window.switchTab('draw')">
+            Drawing Studio
+        </button>
+    </div>
+
+    <!-- Tab 2: Drawing Tools -->
+    <div id="tab-draw" class="tab-content">
+        <div class="group-wrapper">
+            <div class="control-label">Tools</div>
+            <div class="control-group">
+                <button onclick="window.setTool('draw')" id="btn-draw">Wall</button>
+                <button onclick="window.setTool('bezier')" id="btn-bezier">Curve</button>
+                <button onclick="window.setTool('fill')" id="btn-fill">Fill</button>
+                <button onclick="window.setTool('eraser')" id="btn-eraser">Eraser</button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+        
+        <button class="danger" onclick="window.resetSim()">Clear All</button>
+
+        <div class="divider"></div>
+
+        <button class="btn-success" onclick="window.switchTab('sim')">
+            Test Configuration
+        </button>
+    </div>
+
+</div>
+
+<script>
+// Global Init Function
+function startApp() {
+    const landing = document.getElementById('landing-page');
+    landing.style.opacity = '0';
+    setTimeout(() => {
+        landing.style.display = 'none';
+        window.initSim(220); // Start simulation on launch
+    }, 500);
+}
+
+// Fetch GitHub Stars
+fetch('https://api.github.com/repos/aaravriyer193/Windy')
+    .then(response => response.json())
+    .then(data => {
+        const starCount = data.stargazers_count !== undefined ? data.stargazers_count : 0;
+        document.getElementById('gh-stars').innerText = `★ ${starCount}`;
+    })
+    .catch(err => {
+        console.warn("Failed to fetch GitHub stars:", err);
+        document.getElementById('gh-stars').innerText = `★ -`;
+    });
+
+(function() {
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const statsDiv = document.getElementById('stats');
+    const guideText = document.getElementById('guide-text');
+    const resSlider = document.getElementById('res-slider');
+    const resVal = document.getElementById('res-val');
+
+    // --- STATE ---
+    let N = 220;           
+    let ASPECT = 2.5;      
+    let M = Math.floor(N * ASPECT);
+    const ITER = 8;
+    
+    // Arrays
+    let size, u, v, u_prev, v_prev, dens, dens_prev, obstacle;
+    let imgData, pixels;
+
+    // Params
+    const dt = 0.1;
+    const windSpeed = 40.0;
+    // FIX: Set initial running state to FALSE so initSim triggers the loop
+    let isRunning = false; 
+    let isSimulating = true;
+    let viewMode = 'density';
+    let currentTool = null;
+    let bezierPoints = [];
+    let currentShapeType = 'rocket'; // Track current shape for re-init
+
+    // --- CORE INITIALIZATION ---
+    window.initSim = function(resolution) {
+        N = parseInt(resolution);
+        M = Math.floor(N * ASPECT);
+        size = (M + 2) * (N + 2);
+
+        // Update UI
+        statsDiv.innerText = `60 FPS | Res: ${N}`;
+        resVal.innerText = `${N}px`;
+
+        // Resize Canvas
+        canvas.width = M;
+        canvas.height = N;
+        imgData = ctx.createImageData(M, N);
+        pixels = imgData.data;
+
+        // Re-alloc Arrays
+        u = new Float32Array(size);
+        v = new Float32Array(size);
+        u_prev = new Float32Array(size);
+        v_prev = new Float32Array(size);
+        dens = new Float32Array(size);
+        dens_prev = new Float32Array(size);
+        obstacle = new Uint8Array(size);
+
+        // Load shape again on new grid
+        if (currentShapeType !== 'custom') {
+            window.loadShape(currentShapeType);
+        }
+        
+        // Ensure loop is running
+        if (!isRunning) {
+            isRunning = true;
+            loop();
+        }
+    };
+
+    // --- INDEXING ---
+    function IX(x, y) {
+        return x + (M + 2) * y;
+    }
+
+    // --- SOLVER ---
+
+    function setBnd(b, x) {
+        for (let i = 1; i <= M; i++) {
+            x[IX(i, 0)] = b === 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
+            x[IX(i, N + 1)] = b === 2 ? -x[IX(i, N)] : x[IX(i, N)];
+        }
+        for (let j = 1; j <= N; j++) {
+            x[IX(0, j)] = b === 1 ? -x[IX(1, j)] : x[IX(1, j)];
+            x[IX(M + 1, j)] = b === 1 ? -x[IX(M, j)] : x[IX(M, j)];
+        }
+    }
+
+    function lin_solve(b, x, x0, a, c) {
+        const cRecip = 1.0 / c;
+        for (let k = 0; k < ITER; k++) {
+            for (let j = 1; j <= N; j++) {
+                for (let i = 1; i <= M; i++) {
+                    const idx = IX(i, j);
+                    if (obstacle[idx] === 0) {
+                        x[idx] = (x0[idx] + a * (x[IX(i + 1, j)] + x[IX(i - 1, j)] + x[IX(i, j + 1)] + x[IX(i, j - 1)])) * cRecip;
+                    } else {
+                        x[idx] = 0;
+                    }
+                }
+            }
+            setBnd(b, x);
+        }
+    }
+
+    function project(u, v, p, div) {
+        const h = 1.0 / N;
+        for (let j = 1; j <= N; j++) {
+            for (let i = 1; i <= M; i++) {
+                const idx = IX(i, j);
+                if (obstacle[idx] === 0) {
+                    div[idx] = -0.5 * h * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
+                    p[idx] = 0;
+                }
+            }
+        }
+        setBnd(0, div);
+        setBnd(0, p);
+        lin_solve(0, p, div, 1, 4);
+
+        for (let j = 1; j <= N; j++) {
+            for (let i = 1; i <= M; i++) {
+                const idx = IX(i, j);
+                if (obstacle[idx] === 0) {
+                    u[idx] -= 0.5 * (p[IX(i + 1, j)] - p[IX(i - 1, j)]) / h;
+                    v[idx] -= 0.5 * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / h;
+                }
+            }
+        }
+        setBnd(1, u);
+        setBnd(2, v);
+    }
+
+    function advect(b, d, d0, u, v, dt) {
+        let i0, i1, j0, j1;
+        let x, y, s0, t0, s1, t1;
+        const dt0 = dt * N;
+
+        for (let j = 1; j <= N; j++) {
+            for (let i = 1; i <= M; i++) {
+                const idx = IX(i, j);
+                if (obstacle[idx] === 0) {
+                    x = i - dt0 * u[idx];
+                    y = j - dt0 * v[idx];
+
+                    if (x < 0.5) x = 0.5; if (x > M + 0.5) x = M + 0.5;
+                    i0 = x | 0; i1 = i0 + 1;
+                    
+                    if (y < 0.5) y = 0.5; if (y > N + 0.5) y = N + 0.5;
+                    j0 = y | 0; j1 = j0 + 1;
+
+                    s1 = x - i0; s0 = 1.0 - s1;
+                    t1 = y - j0; t0 = 1.0 - t1;
+
+                    d[idx] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
+                             s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+                }
+            }
+        }
+        setBnd(b, d);
+    }
+
+    function step() {
+        // Inflow
+        for (let j = 1; j <= N; j++) {
+            u[IX(1, j)] = windSpeed;
+            dens[IX(1, j)] = (j % 20 > 8) ? 255 : 0; 
+            u[IX(M, j)] = u[IX(M-1, j)];
+            dens[IX(M, j)] = dens[IX(M-1, j)];
+        }
+
+        project(u, v, u_prev, v_prev); 
+        advect(1, u_prev, u, u, v, dt);
+        advect(2, v_prev, v, u, v, dt);
+        project(u_prev, v_prev, u, v);
+        
+        u.set(u_prev);
+        v.set(v_prev);
+
+        advect(0, dens_prev, dens, u, v, dt);
+        dens.set(dens_prev);
+
+        // --- SMOKE FIX --- 
+        // Force clear density inside walls to prevent "emitting" smoke
+        // Also clean up any tiny floating point density errors
+        for (let i = 0; i < size; i++) {
+            if (obstacle[i] === 1) {
+                dens[i] = 0;
+            }
+        }
+    }
+
+    function draw() {
+        let pIdx = 0;
+        for (let j = 0; j < N; j++) {
+            for (let i = 0; i < M; i++) {
+                const idx = IX(i + 1, N - j);
+
+                let r=0, g=0, b=0;
+
+                if (obstacle[idx]) {
+                    r = 100; g = 116; b = 139;
+                } else {
+                    let val = 0;
+                    if (viewMode === 'density') {
+                        val = dens[idx];
+                        r = val; g = val; b = val + 20;
+                    } else {
+                        const vx = u[idx];
+                        const vy = v[idx];
+                        val = Math.sqrt(vx*vx + vy*vy) * 3;
+                        r = val; g = val * 0.5; b = 255 - val;
+                    }
+                }
+                
+                if (currentTool === 'bezier' && bezierPoints.length > 0) {
+                     for(let pt of bezierPoints) {
+                         if (Math.abs(pt.x - i) < 3 && Math.abs(pt.y - j) < 3) {
+                             r=255; g=165; b=0;
+                         }
+                     }
+                }
+
+                pixels[pIdx++] = r;
+                pixels[pIdx++] = g;
+                pixels[pIdx++] = b;
+                pixels[pIdx++] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- UI LOGIC ---
+
+    function clearFluidOnly() {
+        if(dens) dens.fill(0);
+        if(u) u.fill(0);
+        if(v) v.fill(0);
+    }
+
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
+        
+        if (tabName === 'draw') {
+             isSimulating = false;
+             clearFluidOnly(); 
+             window.setTool('draw'); 
+        } else {
+             isSimulating = true;
+             window.setTool(null); 
+        }
+    };
+
+    window.setTool = function(tool) {
+        currentTool = tool;
+        bezierPoints = [];
+        document.querySelectorAll('#tab-draw button').forEach(b => b.classList.remove('active'));
+        if (tool && document.getElementById('btn-'+tool)) document.getElementById('btn-'+tool).classList.add('active');
+        
+        guideText.style.display = tool === 'bezier' ? 'block' : 'none';
+        if (tool === 'bezier') {
+            guideText.innerText = "Click Start Point";
+        } else if (tool === 'fill') {
+            guideText.style.display = 'block';
+            guideText.innerText = "Click inside a shape to fill";
+        }
+    };
+
+    resSlider.addEventListener('change', (e) => {
+        const val = e.target.value;
+        window.initSim(val);
+    });
+
+    // --- INPUT ---
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: Math.floor((e.clientX - rect.left) * scaleX),
+            y: Math.floor((e.clientY - rect.top) * scaleY)
+        };
+    }
+
+    function floodFill(startX, startY) {
+        // Stack-based flood fill to avoid recursion limits
+        const startGridY = N - startY;
+        const startIdx = IX(startX, startGridY);
+        
+        // Safety checks
+        if (startX < 1 || startX > M || startGridY < 1 || startGridY > N) return;
+        if (obstacle[startIdx] === 1) return; // Already wall
+
+        const stack = [startIdx];
+        
+        while(stack.length > 0) {
+            const idx = stack.pop();
+            
+            if (obstacle[idx] === 1) continue;
+            obstacle[idx] = 1;
+            
+            // Neighbors: left, right, up, down
+            // Convert index back to coords to check bounds loosely or just check neighbors in 1D array
+            // Up (in array memory, which is Y+1)
+            if (idx + M + 2 < size && obstacle[idx + M + 2] === 0) stack.push(idx + M + 2);
+            // Down
+            if (idx - (M + 2) >= 0 && obstacle[idx - (M + 2)] === 0) stack.push(idx - (M + 2));
+            // Right
+            if (obstacle[idx + 1] === 0) stack.push(idx + 1);
+            // Left
+            if (obstacle[idx - 1] === 0) stack.push(idx - 1);
+        }
+        
+        // Clear fluid at filled locations
+        for(let i=0; i<size; i++) {
+            if(obstacle[i] === 1) {
+                dens[i] = 0; u[i] = 0; v[i] = 0;
+            }
+        }
+    }
+
+    function plotLine(x0, y0, x1, y1, width) {
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        const sx = (x0 < x1) ? 1 : -1;
+        const sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+
+        while(true) {
+            for(let wx = -width; wx <= width; wx++) {
+                for(let wy = -width; wy <= width; wy++) {
+                     let px = x0 + wx;
+                     let py = y0 + wy;
+                     let gridY = N - py; 
+                     if (px > 0 && px <= M && gridY > 0 && gridY <= N) {
+                         obstacle[IX(px, gridY)] = (currentTool === 'eraser') ? 0 : 1;
+                         if(currentTool !== 'eraser') { u[IX(px, gridY)] = 0; v[IX(px, gridY)] = 0; dens[IX(px, gridY)] = 0; }
+                     }
+                }
+            }
+            if ((x0 === x1) && (y0 === y1)) break;
+            const e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+    }
+    
+    function plotBezier(p0, p1, p2, p3) {
+        let prev = p0;
+        const segments = Math.floor(N * 0.8);
+        for (let i = 1; i <= segments; i++) {
+            let t = i / segments;
+            let it = 1 - t;
+            let x = it*it*it*p0.x + 3*it*it*t*p1.x + 3*it*t*t*p2.x + t*t*t*p3.x;
+            let y = it*it*it*p0.y + 3*it*it*t*p1.y + 3*it*t*t*p2.y + t*t*t*p3.y;
+            let curr = {x: Math.floor(x), y: Math.floor(y)};
+            plotLine(prev.x, prev.y, curr.x, curr.y, 1);
+            prev = curr;
+        }
+    }
+
+    let isDrag = false;
+    let lastPos = null;
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (!document.getElementById('tab-draw').classList.contains('active')) return;
+        
+        const pos = getPos(e);
+        
+        if (currentTool === 'fill') {
+            floodFill(pos.x, pos.y);
+            return;
+        }
+
+        if (currentTool === 'bezier') {
+            bezierPoints.push(pos);
+            const stages = ["Start", "Control 1", "Control 2", "End"];
+            if (bezierPoints.length < 4) {
+                guideText.innerText = `Click ${stages[bezierPoints.length]}`;
+            } else {
+                plotBezier(bezierPoints[0], bezierPoints[1], bezierPoints[2], bezierPoints[3]);
+                bezierPoints = [];
+                guideText.innerText = "Curve Drawn. Click to start new.";
+                setTimeout(() => { if(currentTool==='bezier') guideText.innerText = "Click Start Point"; }, 1500);
+            }
+            return;
+        }
+
+        isDrag = true;
+        lastPos = pos;
+        if (currentTool === 'draw' || currentTool === 'eraser') {
+            plotLine(pos.x, pos.y, pos.x, pos.y, 1);
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDrag) return;
+        const pos = getPos(e);
+        if (currentTool === 'draw' || currentTool === 'eraser') {
+            plotLine(lastPos.x, lastPos.y, pos.x, pos.y, 1);
+        }
+        lastPos = pos;
+    });
+
+    canvas.addEventListener('mouseup', () => isDrag = false);
+
+    // --- API ---
+    
+    window.loadShape = function(type) {
+        if(type !== 'custom') currentShapeType = type;
+        
+        obstacle.fill(0);
+        window.switchTab('sim');
+        
+        document.querySelectorAll('#tab-sim button').forEach(b => b.classList.remove('active'));
+        if(type !== 'custom' && document.getElementById('btn-'+type)) {
+            document.getElementById('btn-'+type).classList.add('active');
+        }
+
+        const cy = N / 2;
+        const startX = Math.floor(M / 4);
+        const w = Math.floor(N * 0.1); // Proportional width
+
+        if (type === 'rocket') {
+            const L = w * 4;
+            for (let i = 0; i < M; i++) {
+                for (let j = 0; j < N; j++) {
+                    let dx = i - (startX + L);
+                    let dy = j - cy;
+                    if (i >= startX && i <= startX + L) {
+                        if ((dx*dx)/(L*L) + (dy*dy)/(w*w) <= 1) obstacle[IX(i,j)] = 1;
+                    }
+                    if (i > startX + L && i < startX + L + (w*4)) {
+                        if (Math.abs(dy) <= w) obstacle[IX(i,j)] = 1;
+                    }
+                    if (i > startX + L + (w*3.2) && i < startX + L + (w*3.8)) {
+                         // Fins
+                        if (Math.abs(dy) > w && Math.abs(dy) < w * 1.4) obstacle[IX(i,j)] = 1;
+                    }
+                }
+            }
+        } else if (type === 'hourglass') {
+            const L = w * 6;
+            for (let i = 0; i < L; i++) {
+                let progress = i / L;
+                let r = w * (0.65 + 0.35 * Math.cos(progress * Math.PI * 4));
+                if (i < w || i > L - w) r = w; 
+                let top = Math.floor(cy + r);
+                let bot = Math.floor(cy - r);
+                for(let j = bot; j <= top; j++) obstacle[IX(startX + i, j)] = 1;
+            }
+        } else if (type === 'blunt') {
+            for(let i=startX; i<startX+(w*4); i++) {
+                for(let j=Math.floor(cy-w); j<=Math.floor(cy+w); j++) obstacle[IX(i,j)] = 1;
+            }
+        }
+        
+        dens.fill(0); u.fill(0); v.fill(0);
+    };
+
+    window.toggleView = function(mode) {
+        viewMode = mode;
+        document.getElementById('view-density').classList.toggle('active', mode === 'density');
+        document.getElementById('view-velocity').classList.toggle('active', mode === 'velocity');
+    };
+
+    window.resetSim = function() {
+        obstacle.fill(0);
+        dens.fill(0); u.fill(0); v.fill(0);
+        bezierPoints = [];
+        currentShapeType = 'custom';
+    };
+
+    function loop() {
+        if (isRunning) {
+            if (isSimulating && u) step();
+            if (imgData) draw();
+        }
+        requestAnimationFrame(loop);
+    }
+
+})();
+</script>
+</body>
+</html>
